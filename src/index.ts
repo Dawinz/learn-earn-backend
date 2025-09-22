@@ -26,9 +26,16 @@ const PORT = process.env.PORT || 8080;
 app.use(helmet());
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? ['https://your-admin-domain.com', 'https://your-mobile-app.com']
+    ? [
+        'https://learn-earn-admin-otyulpxc5-dawson-s-projects.vercel.app',
+        'https://learn-earn-admin.vercel.app',
+        'https://learn-earn-admin-dawson-s-projects.vercel.app',
+        'https://your-mobile-app.com'
+      ]
     : true,
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // Body parsing middleware
