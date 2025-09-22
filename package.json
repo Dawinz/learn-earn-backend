@@ -4,9 +4,10 @@
   "description": "Learn & Earn Backend API",
   "main": "dist/index.js",
   "scripts": {
-    "start": "if [ ! -d \"dist\" ]; then tsc; fi && node dist/index.js",
+    "start": "tsc && node ./dist/index.js",
     "dev": "nodemon src/index.ts",
     "build": "tsc",
+    "postinstall": "tsc",
     "seed": "ts-node src/scripts/seed.ts",
     "seed:admob": "ts-node src/scripts/seedAdMob.ts",
     "test:quiz": "ts-node src/scripts/testQuiz.ts",
