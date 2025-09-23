@@ -1,12 +1,14 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import User, { IUser } from '../models/User';
+import AuthUser from '../models/AuthUser';
 import Audit from '../models/Audit';
 import { verifySignature } from '../utils/crypto';
 
 export interface AuthenticatedRequest extends Request {
   user?: IUser;
   deviceId?: string;
+  userId?: string;
 }
 
 /**
@@ -63,6 +65,48 @@ export async function authenticateDevice(
   } catch (error) {
     console.error('Authentication error:', error);
     res.status(500).json({ error: 'Authentication failed' });
+  }
+}
+
+/**
+ * Verify JWT token for authenticated users
+ */
+export async function authenticateToken(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    
+    if (!token) {
+      return res.status(401).json({ 
+        success: false,
+        message: 'No token provided' 
+      });
+    }
+    
+    const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    
+    // Verify user still exists
+    const user = await AuthUser.findById(decoded.userId);
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+    
+    (req as any).userId = decoded.userId;
+    (req as any).user = user;
+    next();
+  } catch (error) {
+    console.error('Token verification error:', error);
+    res.status(401).json({ 
+      success: false,
+      message: 'Invalid token' 
+    });
   }
 }
 

@@ -35,7 +35,7 @@ export async function getLessons(req: AuthenticatedRequest, res: Response) {
     // Add completion status to each lesson
     const lessonsWithStatus = lessons.map(lesson => ({
       ...lesson.toObject(),
-      isCompleted: completedLessons.includes(lesson._id.toString())
+      isCompleted: completedLessons.includes((lesson._id as any).toString())
     }));
     
     const total = await Lesson.countDocuments(query);
@@ -79,7 +79,7 @@ export async function getLessonById(req: AuthenticatedRequest, res: Response) {
     // Add completion status to lesson
     const lessonWithStatus = {
       ...lesson.toObject(),
-      isCompleted: completedLessons.includes(lesson._id.toString())
+      isCompleted: completedLessons.includes((lesson._id as any).toString())
     };
     
     res.json({ lesson: lessonWithStatus });

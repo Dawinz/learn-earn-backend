@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import { apiLimiter } from './middleware/rateLimit';
 
 // Import routes
+import authRoutes from './routes/authRoutes';
 import userRoutes from './routes/userRoutes';
 import earningRoutes from './routes/earningRoutes';
 import payoutRoutes from './routes/payoutRoutes';
@@ -55,6 +56,7 @@ app.get('/health', (req: Request, res: Response) => {
 });
 
 // API routes
+app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/earnings', earningRoutes);
 app.use('/api/payouts', payoutRoutes);
