@@ -1,5 +1,6 @@
 import { Response } from 'express';
 import User from '../models/User';
+import AuthUser from '../models/AuthUser';
 import Payout from '../models/Payout';
 import Settings from '../models/Settings';
 import Lesson from '../models/Lesson';
@@ -263,6 +264,22 @@ export async function saveLesson(req: any, res: Response) {
 }
 
 /**
+ * Get settings
+ */
+export async function getSettings(req: any, res: Response) {
+  try {
+    const settings = await Settings.findOne();
+    if (!settings) {
+      return res.status(404).json({ error: 'Settings not found' });
+    }
+    
+    res.json({ settings });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get settings' });
+  }
+}
+
+/**
  * Update settings
  */
 export async function updateSettings(req: any, res: Response) {
@@ -322,22 +339,29 @@ export async function getUsers(req: any, res: Response) {
   try {
     const { page = 1, limit = 20, filter, status, sortKey = 'createdAt', sortOrder = 'desc' } = req.query;
     
-    // Build query
-    const query: any = {};
+    // Build query for both User and AuthUser collections
+    const userQuery: any = {};
+    const authUserQuery: any = {};
+    
     if (filter) {
-      query.deviceId = { $regex: filter, $options: 'i' };
+      userQuery.deviceId = { $regex: filter, $options: 'i' };
+      authUserQuery.$or = [
+        { email: { $regex: filter, $options: 'i' } },
+        { name: { $regex: filter, $options: 'i' } }
+      ];
     }
     if (status && status !== 'all') {
-      query.status = status;
+      userQuery.status = status;
+      // AuthUsers don't have status field, so we'll handle this in the aggregation
     }
     
     // Build sort object
     const sort: any = {};
     sort[sortKey as string] = sortOrder === 'asc' ? 1 : -1;
     
-    // Get users with aggregation to include earnings and payouts
-    const users = await User.aggregate([
-      { $match: query },
+    // Get device-based users (original system)
+    const deviceUsers = await User.aggregate([
+      { $match: userQuery },
       {
         $lookup: {
           from: 'earnings',
@@ -358,12 +382,12 @@ export async function getUsers(req: any, res: Response) {
         $addFields: {
           totalEarningsUsd: { $sum: '$earnings.usd' },
           totalPayoutsUsd: { $sum: '$payouts.amount' },
-          lastActivity: { $max: ['$lastActivity', { $max: '$earnings.createdAt' }] }
+          lastActivity: { $max: ['$lastActivity', { $max: '$earnings.createdAt' }] },
+          userType: 'device',
+          displayId: '$deviceId',
+          displayName: { $concat: ['Device: ', '$deviceId'] }
         }
       },
-      { $sort: sort },
-      { $skip: (Number(page) - 1) * Number(limit) },
-      { $limit: Number(limit) },
       {
         $project: {
           _id: 1,
@@ -372,20 +396,94 @@ export async function getUsers(req: any, res: Response) {
           totalEarningsUsd: 1,
           totalPayoutsUsd: 1,
           lastActivity: 1,
-          createdAt: 1
+          createdAt: 1,
+          userType: 1,
+          displayId: 1,
+          displayName: 1
         }
       }
     ]);
     
-    const total = await User.countDocuments(query);
+    // Get email-based users (mobile app signups)
+    const authUsers = await AuthUser.aggregate([
+      { $match: authUserQuery },
+      {
+        $lookup: {
+          from: 'earnings',
+          localField: '_id',
+          foreignField: 'userId',
+          as: 'earnings'
+        }
+      },
+      {
+        $lookup: {
+          from: 'payouts',
+          localField: '_id',
+          foreignField: 'userId',
+          as: 'payouts'
+        }
+      },
+      {
+        $addFields: {
+          totalEarningsUsd: { $sum: '$earnings.amountUsd' },
+          totalPayoutsUsd: { $sum: '$payouts.amountUsd' },
+          lastActivity: { $max: ['$lastLoginAt', { $max: '$earnings.createdAt' }] },
+          userType: 'email',
+          displayId: '$email',
+          displayName: '$name',
+          status: 'active' // AuthUsers are always active unless blocked
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          email: 1,
+          name: 1,
+          phoneNumber: 1,
+          isEmailVerified: 1,
+          totalEarningsUsd: 1,
+          totalPayoutsUsd: 1,
+          lastActivity: 1,
+          createdAt: 1,
+          userType: 1,
+          displayId: 1,
+          displayName: 1,
+          status: 1
+        }
+      }
+    ]);
+    
+    // Combine both user types
+    let allUsers = [...deviceUsers, ...authUsers];
+    
+    // Apply status filter for combined results
+    if (status && status !== 'all') {
+      allUsers = allUsers.filter(user => user.status === status);
+    }
+    
+    // Sort combined results
+    allUsers.sort((a, b) => {
+      const aValue = a[sortKey as string];
+      const bValue = b[sortKey as string];
+      if (sortOrder === 'asc') {
+        return aValue > bValue ? 1 : -1;
+      } else {
+        return aValue < bValue ? 1 : -1;
+      }
+    });
+    
+    // Apply pagination
+    const startIndex = (Number(page) - 1) * Number(limit);
+    const endIndex = startIndex + Number(limit);
+    const paginatedUsers = allUsers.slice(startIndex, endIndex);
     
     res.json({
-      users,
+      users: paginatedUsers,
       pagination: {
         page: Number(page),
         limit: Number(limit),
-        total,
-        pages: Math.ceil(total / Number(limit))
+        total: allUsers.length,
+        pages: Math.ceil(allUsers.length / Number(limit))
       }
     });
   } catch (error) {
@@ -453,5 +551,53 @@ export async function unblockUser(req: any, res: Response) {
   } catch (error) {
     console.error('Unblock user error:', error);
     res.status(500).json({ error: 'Failed to unblock user' });
+  }
+}
+
+/**
+ * Get analytics data
+ */
+export async function getAnalytics(req: any, res: Response) {
+  try {
+    // Count both types of users
+    const deviceUsers = await User.countDocuments();
+    const authUsers = await AuthUser.countDocuments();
+    const totalUsers = deviceUsers + authUsers;
+    
+    const activeUsers = await User.countDocuments({ status: 'active' }) + authUsers; // AuthUsers are always active
+    const blockedUsers = await User.countDocuments({ status: 'blocked' });
+    
+    const totalEarnings = await Earning.aggregate([
+      { $group: { _id: null, total: { $sum: '$amountUsd' } } }
+    ]);
+    
+    const totalPayouts = await Payout.aggregate([
+      { $group: { _id: null, total: { $sum: '$amountUsd' } } }
+    ]);
+    
+    const recentEarnings = await Earning.find()
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .populate('userId', 'deviceId email name')
+      .select('amountUsd source createdAt userId');
+    
+    const recentPayouts = await Payout.find()
+      .sort({ requestedAt: -1 })
+      .limit(10)
+      .populate('userId', 'deviceId email name')
+      .select('amountUsd status requestedAt paidAt userId');
+    
+    res.json({
+      totalUsers,
+      activeUsers,
+      blockedUsers,
+      totalEarningsUsd: totalEarnings[0]?.total || 0,
+      totalPayoutsUsd: totalPayouts[0]?.total || 0,
+      recentEarnings,
+      recentPayouts
+    });
+  } catch (error) {
+    console.error('Analytics error:', error);
+    res.status(500).json({ error: 'Failed to get analytics' });
   }
 }

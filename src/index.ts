@@ -31,14 +31,20 @@ app.use(cors({
         'https://learn-earn-admin-otyulpxc5-dawson-s-projects.vercel.app',
         'https://learn-earn-admin.vercel.app',
         'https://learn-earn-admin-dawson-s-projects.vercel.app',
+        'https://learn-earn-admin-git-main-dawson-s-projects.vercel.app',
+        'https://learn-earn-admin-drs4a6sc6-dawson-s-projects.vercel.app',
+        // Mobile app domains (add when deployed)
         'https://your-mobile-app.com',
-        // Add your mobile app domains here when you deploy
-        'http://localhost:3000', // For local development
-        'http://localhost:8080', // For local development
-        'http://localhost:3001', // For local development
+        'https://learn-earn-mobile.vercel.app',
+        // Local development
+        'http://localhost:3000',
+        'http://localhost:8080',
+        'http://localhost:3001',
+        'http://localhost:5173',
         'http://127.0.0.1:3000',
         'http://127.0.0.1:8080',
-        'http://127.0.0.1:3001'
+        'http://127.0.0.1:3001',
+        'http://127.0.0.1:5173'
       ]
     : true,
   credentials: true,

@@ -24,6 +24,10 @@ export declare function getLessonsAdmin(req: any, res: Response): Promise<void>;
  */
 export declare function saveLesson(req: any, res: Response): Promise<Response<any, Record<string, any>> | undefined>;
 /**
+ * Get settings
+ */
+export declare function getSettings(req: any, res: Response): Promise<Response<any, Record<string, any>> | undefined>;
+/**
  * Update settings
  */
 export declare function updateSettings(req: any, res: Response): Promise<void>;
@@ -43,4 +47,8 @@ export declare function blockUser(req: any, res: Response): Promise<Response<any
  * Unblock a user
  */
 export declare function unblockUser(req: any, res: Response): Promise<Response<any, Record<string, any>> | undefined>;
+/**
+ * Get analytics data
+ */
+export declare function getAnalytics(req: any, res: Response): Promise<void>;
 //# sourceMappingURL=adminController.d.ts.map

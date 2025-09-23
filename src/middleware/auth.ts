@@ -126,9 +126,16 @@ export function authenticateAdmin(
     }
     
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
+    
+    // Check if it's an admin token (has id and username)
+    if (!decoded.id || !decoded.username) {
+      return res.status(401).json({ error: 'Invalid admin token' });
+    }
+    
     (req as AuthenticatedRequest).user = decoded;
     next();
   } catch (error) {
+    console.error('Admin token verification error:', error);
     res.status(401).json({ error: 'Invalid token' });
   }
 }

@@ -16,10 +16,12 @@ router.get('/lessons', lessonController_1.getAdminLessons);
 router.post('/lessons', lessonController_1.createLesson);
 router.put('/lessons/:lessonId', lessonController_1.updateLesson);
 router.delete('/lessons/:lessonId', lessonController_1.deleteLesson);
+router.get('/settings', adminController_1.getSettings);
 router.put('/settings', adminController_1.updateSettings);
 router.get('/audits', adminController_1.getAuditLogs);
 router.get('/users', adminController_1.getUsers);
 router.put('/users/:userId/block', adminController_1.blockUser);
 router.put('/users/:userId/unblock', adminController_1.unblockUser);
+router.get('/analytics', adminController_1.getAnalytics);
 exports.default = router;
 //# sourceMappingURL=adminRoutes.js.map
