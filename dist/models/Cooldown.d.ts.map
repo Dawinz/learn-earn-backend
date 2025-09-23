@@ -1,0 +1,1 @@
+{"version":3,"file":"Cooldown.d.ts","sourceRoot":"","sources":["../../src/models/Cooldown.ts"],"names":[],"mappings":"AAAA,OAAO,QAAQ,EAAE,EAAE,QAAQ,EAAU,MAAM,UAAU,CAAC;AAEtD,MAAM,WAAW,SAAU,SAAQ,QAAQ;IACzC,QAAQ,EAAE,MAAM,CAAC;IACjB,YAAY,EAAE,IAAI,CAAC;IACnB,MAAM,EAAE,UAAU,GAAG,WAAW,GAAG,iBAAiB,CAAC;IACrD,SAAS,EAAE,IAAI,CAAC;CACjB;;;;;;AAwBD,wBAAqE"}

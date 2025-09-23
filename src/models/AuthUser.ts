@@ -17,8 +17,7 @@ const AuthUserSchema = new Schema<IAuthUser>({
     required: true, 
     unique: true,
     lowercase: true,
-    trim: true,
-    index: true
+    trim: true
   },
   password: { 
     type: String, 
