@@ -16,6 +16,7 @@ import adMobRoutes from './routes/adMobRoutes';
 import quizRoutes from './routes/quizRoutes';
 import cooldownRoutes from './routes/cooldownRoutes';
 import dailyEarningRoutes from './routes/dailyEarningRoutes';
+import versionRoutes from './routes/versionRoutes';
 
 // Load environment variables
 dotenv.config();
@@ -89,6 +90,7 @@ app.use('/api/ads', adMobRoutes);
 app.use('/api/quiz', quizRoutes);
 app.use('/api/cooldown', cooldownRoutes);
 app.use('/api/daily-earning', dailyEarningRoutes);
+app.use('/api/version', versionRoutes);
 
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
