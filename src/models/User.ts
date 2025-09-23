@@ -8,6 +8,9 @@ export interface IUser extends Document {
   createdAt: Date;
   isEmulator: boolean;
   lastActiveAt: Date;
+  lastDailyReset?: Date;
+  completedLessons: string[];
+  dailyResetCount: number;
 }
 
 const UserSchema = new Schema<IUser>({
@@ -39,6 +42,17 @@ const UserSchema = new Schema<IUser>({
   lastActiveAt: { 
     type: Date, 
     default: Date.now 
+  },
+  lastDailyReset: { 
+    type: Date 
+  },
+  completedLessons: { 
+    type: [String], 
+    default: [] 
+  },
+  dailyResetCount: { 
+    type: Number, 
+    default: 0 
   }
 });
 

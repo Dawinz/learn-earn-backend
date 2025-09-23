@@ -1,5 +1,6 @@
 import { Response } from 'express';
 import Lesson from '../models/Lesson';
+import User from '../models/User';
 import { AuthenticatedRequest } from '../middleware/auth';
 
 /**
@@ -8,6 +9,7 @@ import { AuthenticatedRequest } from '../middleware/auth';
 export async function getLessons(req: AuthenticatedRequest, res: Response) {
   try {
     const { category, tags, page = 1, limit = 20 } = req.query;
+    const { deviceId } = req;
     
     const query: any = { isPublished: true };
     
@@ -26,10 +28,20 @@ export async function getLessons(req: AuthenticatedRequest, res: Response) {
       .limit(Number(limit) * 1)
       .skip((Number(page) - 1) * Number(limit));
     
+    // Get user's completed lessons
+    const user = await User.findOne({ deviceId });
+    const completedLessons = user?.completedLessons || [];
+    
+    // Add completion status to each lesson
+    const lessonsWithStatus = lessons.map(lesson => ({
+      ...lesson.toObject(),
+      isCompleted: completedLessons.includes(lesson._id.toString())
+    }));
+    
     const total = await Lesson.countDocuments(query);
     
     res.json({
-      lessons,
+      lessons: lessonsWithStatus,
       pagination: {
         page: Number(page),
         limit: Number(limit),
@@ -49,6 +61,7 @@ export async function getLessons(req: AuthenticatedRequest, res: Response) {
 export async function getLessonById(req: AuthenticatedRequest, res: Response) {
   try {
     const { lessonId } = req.params;
+    const { deviceId } = req;
     
     const lesson = await Lesson.findOne({
       _id: lessonId,
@@ -59,7 +72,17 @@ export async function getLessonById(req: AuthenticatedRequest, res: Response) {
       return res.status(404).json({ error: 'Lesson not found' });
     }
     
-    res.json({ lesson });
+    // Get user's completed lessons
+    const user = await User.findOne({ deviceId });
+    const completedLessons = user?.completedLessons || [];
+    
+    // Add completion status to lesson
+    const lessonWithStatus = {
+      ...lesson.toObject(),
+      isCompleted: completedLessons.includes(lesson._id.toString())
+    };
+    
+    res.json({ lesson: lessonWithStatus });
   } catch (error) {
     console.error('Get lesson error:', error);
     res.status(500).json({ error: 'Failed to get lesson' });

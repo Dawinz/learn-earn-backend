@@ -143,10 +143,144 @@ export async function getUserProfile(req: AuthenticatedRequest, res: Response) {
       hasMobileNumber: !!user.mmHash,
       numberLockedUntil: user.numberLockedUntil,
       createdAt: user.createdAt,
-      lastActiveAt: user.lastActiveAt
+      lastActiveAt: user.lastActiveAt,
+      lastDailyReset: user.lastDailyReset,
+      completedLessons: user.completedLessons,
+      dailyResetCount: user.dailyResetCount
     });
   } catch (error) {
     console.error('Get profile error:', error);
     res.status(500).json({ error: 'Failed to get profile' });
   }
+}
+
+/**
+ * Complete a lesson
+ */
+export async function completeLesson(req: AuthenticatedRequest, res: Response) {
+  try {
+    const { lessonId } = req.params;
+    const { deviceId } = req;
+    
+    if (!lessonId) {
+      return res.status(400).json({ error: 'Lesson ID is required' });
+    }
+    
+    const user = await User.findOne({ deviceId });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Add lesson to completed lessons if not already completed
+    if (!user.completedLessons.includes(lessonId)) {
+      user.completedLessons.push(lessonId);
+      await user.save();
+    }
+    
+    // Log the action
+    await Audit.create({
+      deviceId,
+      action: 'lesson_completed',
+      detail: `Lesson ID: ${lessonId}`,
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent')
+    });
+    
+    res.json({
+      success: true,
+      message: 'Lesson completed successfully',
+      completedLessons: user.completedLessons
+    });
+  } catch (error) {
+    console.error('Complete lesson error:', error);
+    res.status(500).json({ error: 'Failed to complete lesson' });
+  }
+}
+
+/**
+ * Get user progress
+ */
+export async function getUserProgress(req: AuthenticatedRequest, res: Response) {
+  try {
+    const { deviceId } = req;
+    
+    const user = await User.findOne({ deviceId });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    res.json({
+      completedLessons: user.completedLessons,
+      lastDailyReset: user.lastDailyReset,
+      dailyResetCount: user.dailyResetCount,
+      isNewDay: isNewDay(user.lastDailyReset)
+    });
+  } catch (error) {
+    console.error('Get progress error:', error);
+    res.status(500).json({ error: 'Failed to get progress' });
+  }
+}
+
+/**
+ * Perform daily reset
+ */
+export async function performDailyReset(req: AuthenticatedRequest, res: Response) {
+  try {
+    const { deviceId } = req;
+    
+    const user = await User.findOne({ deviceId });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    // Check if reset is needed
+    if (user.lastDailyReset && !isNewDay(user.lastDailyReset)) {
+      return res.status(400).json({ 
+        error: 'Daily reset already performed today',
+        lastReset: user.lastDailyReset
+      });
+    }
+    
+    // Perform reset
+    user.completedLessons = [];
+    user.lastDailyReset = today;
+    user.dailyResetCount += 1;
+    await user.save();
+    
+    // Log the action
+    await Audit.create({
+      deviceId,
+      action: 'daily_reset',
+      detail: `Reset count: ${user.dailyResetCount}`,
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent')
+    });
+    
+    res.json({
+      success: true,
+      message: 'Daily reset completed successfully',
+      resetDate: today,
+      dailyResetCount: user.dailyResetCount,
+      completedLessons: user.completedLessons
+    });
+  } catch (error) {
+    console.error('Daily reset error:', error);
+    res.status(500).json({ error: 'Failed to perform daily reset' });
+  }
+}
+
+/**
+ * Check if it's a new day since last reset
+ */
+function isNewDay(lastReset?: Date): boolean {
+  if (!lastReset) return true;
+  
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const lastResetDay = new Date(lastReset.getFullYear(), lastReset.getMonth(), lastReset.getDate());
+  
+  return lastResetDay < today;
 }
